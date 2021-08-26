@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import './provider.dart';
+import 'package:http/http.dart' as http;
 
 class Products with ChangeNotifier{
   List<Product> _items = [
@@ -36,9 +38,7 @@ class Products with ChangeNotifier{
       imageUrl:
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
     ),
-
   ];
-
   List<Product> get items {
     return [..._items];
   }
@@ -51,8 +51,39 @@ class Products with ChangeNotifier{
     return _items.firstWhere((prod) => prod.id == id);
   }
 
-  void addProduct(){
-    //_items.add(value);
+  void addProduct(Product product){
+    print('add');
+    const url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products.json';
+    http.post(Uri.parse(url),body: jsonEncode({
+      'title':product.title,
+      'description': product.description,
+      'imageUrl': product.imageUrl,
+      'price': product.price,
+      'isFavourite':product.isFavourite,
+    })).then((response) {
+      final newProduct = Product(
+        title: product.title,
+        description: product.description,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        id: DateTime.now().toString(),
+      );
+      _items.add(newProduct);
+      notifyListeners();
+    }
+    );
+  }
+  void updateProduct(String id, Product newProduct){
+    final prodIndex = _items.indexWhere((prod) => prod.id == id);
+    if(prodIndex >= 0){
+      _items[prodIndex] = newProduct;
+      notifyListeners();
+    }else{
+      print('...');
+    }
+  }
+  void deleteProduct(String id) {
+    _items.removeWhere((prod) => prod.id == id);
     notifyListeners();
   }
 }
