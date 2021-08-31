@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +14,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final _imageUrlFocusNode = FocusNode();
   final _form = GlobalKey<FormState>();
   var _isInit = true;
+  bool isLoading = false;
   var _editedProduct = Product(
     id: null,
     title: '',
@@ -69,18 +69,49 @@ class _EditProductScreenState extends State<EditProductScreen> {
     }
   }
 
-  void _saveForm(){
+  Future<void> _saveForm() async {
     final isValid = _form.currentState.validate();
+    setState(() {
+      isLoading = true;
+    });
     if(!isValid){return;}
     _form.currentState.save();
     if(_editedProduct.id != null){
-      Provider.of<Products>(context,listen: false).updateProduct(_editedProduct.id,_editedProduct);
-
+      await Provider.of<Products>(context,listen: false)
+          .updateProduct(_editedProduct.id,_editedProduct);
     }else{
-      Provider.of<Products>(context,listen: false).addProduct(_editedProduct);
-    }
+     try{
+       await Provider.of<Products>(context,listen: false)
+           .addProduct(_editedProduct);
+     }catch (e) {
+       await showDialog<Null>(context: context, builder: (ctx) =>
+           AlertDialog(
+             title: Text('An error occurred!'),
+             content: Text('Something went wrong'),
+             actions: [
+               TextButton(
+                 child: Text('Okay'),
+                 onPressed: () {
+                   Navigator.of(context).pop();
+                 },
+               ),
+             ],
+           ));
+     }
+     // } finally{
+     //   setState(() {
+     //     isLoading = false;
+     //   });
+     //   Navigator.of(context).pop();
+     // }
+
+      }
+    setState(() {
+      isLoading = false;
+    });
     Navigator.of(context).pop();
-  }
+    }
+
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +124,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
            }, icon: Icon(Icons.save)),
         ],
         ),
-      body: Padding(
+      body: isLoading ? Center(child: CircularProgressIndicator(),) : Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _form,
@@ -193,7 +224,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     child: TextFormField(
                       // initialValue: _initValues['imageUrl'],
                       decoration: InputDecoration(labelText: 'Image URL'),
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.url,
                       textInputAction: TextInputAction.done,
                       controller: _imageUrlController,
                       focusNode: _imageUrlFocusNode,

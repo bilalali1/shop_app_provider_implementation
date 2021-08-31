@@ -9,6 +9,7 @@ enum FilterOptions{
   Favourites,
   All
 }
+
 class ProductOverviewScreen extends StatefulWidget {
   @override
   _ProductOverviewScreenState createState() => _ProductOverviewScreenState();
@@ -16,6 +17,26 @@ class ProductOverviewScreen extends StatefulWidget {
 
 class _ProductOverviewScreenState extends State<ProductOverviewScreen> {
   var _showOnlyFavourite = false;
+  bool isInit = true;
+  bool isLoading = false;
+  @override
+
+  void didChangeDependencies() {
+
+    super.didChangeDependencies();
+    if(isInit)
+      {
+       setState(() {
+         isLoading = true;
+       });
+        Provider.of<Products>(context,listen: false).fetchAndSetProducts().then((_){
+          setState(() {
+            isLoading = false;
+          });
+           });
+      }
+    isInit = false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +82,7 @@ class _ProductOverviewScreenState extends State<ProductOverviewScreen> {
       ],
       ),
       drawer: AppDrawer(),
-      body: ProductsGrid(_showOnlyFavourite),
+      body: isLoading ? Center(child: CircularProgressIndicator(),) : ProductsGrid(_showOnlyFavourite),
     );
   }
 }
