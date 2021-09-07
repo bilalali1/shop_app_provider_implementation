@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shoppin_app_provider_implement/screens/screens.dart';
 import './screens/product_overview_screen.dart';
 import './providers/provider.dart';
 import 'package:provider/provider.dart';
 import './screens/screens.dart';
 
 void main() {
-  runApp(
-      MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -16,28 +14,40 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => Products()),
+        ChangeNotifierProvider.value(value: Auth()),
+        ChangeNotifierProxyProvider<Auth, Products>(
+            update: (context, auth, previousProducts) => Products(
+                  auth.token,
+                  previousProducts == null ? [] : previousProducts.items,
+                  auth.userId,
+                )),
         ChangeNotifierProvider(create: (context) => Cart()),
-        ChangeNotifierProvider(create: (context) => Orders()),
-        ],
-        child: MaterialApp(
+        ChangeNotifierProxyProvider<Auth, Orders>(
+            update: (context, auth, previousOrders) => Orders(
+                auth.token,
+                auth.userId,
+                previousOrders == null ? [] : previousOrders.orders)),
+      ],
+      child: Consumer<Auth>(
+        builder: (ctx, auth, _) => MaterialApp(
           debugShowCheckedModeBanner: false,
+          title: 'MyShop',
           theme: ThemeData(
             primarySwatch: Colors.purple,
             primaryColor: Colors.purple,
             accentColor: Colors.deepOrange,
             fontFamily: 'Lato',
           ),
-          home: ProductOverviewScreen(),
+          home: auth.isAuth ? ProductOverviewScreen() : AuthScreen(),
           routes: {
             ProductDetailScreen.routeName: (ctx) => ProductDetailScreen(),
             CartScreen.routeName: (ctx) => CartScreen(),
             OrdersScreen.routeName: (ctx) => OrdersScreen(),
-            UserProductScreen.routeName:(ctx) => UserProductScreen(),
-            EditProductScreen.routeName:(ctx) => EditProductScreen(),
+            UserProductScreen.routeName: (ctx) => UserProductScreen(),
+            EditProductScreen.routeName: (ctx) => EditProductScreen(),
           },
         ),
-      );
+      ),
+    );
   }
 }
-

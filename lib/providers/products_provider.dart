@@ -40,6 +40,11 @@ class Products with ChangeNotifier{
     //   'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
     // ),
   ];
+
+  final String authToken;
+  final String userId;
+  Products(this.authToken, this._items, this.userId);
+
   List<Product> get items {
     return [..._items];
   }
@@ -52,11 +57,21 @@ class Products with ChangeNotifier{
     return _items.firstWhere((prod) => prod.id == id);
   }
 
-  Future<void> fetchAndSetProducts() async {
-    const url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products.json';
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
+    final filterString = filterByUser ? 'orderBy="creatorId"&equalTo="$userId"' : '';
+    var url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products.json?auth=$authToken&$filterString';
     try{
       final response = await http.get(Uri.parse(url));
       final extratedData = json.decode(response.body) as Map<String, dynamic>;
+      if(extratedData == null){
+        return;
+      }
+      url =
+          'https://shop-8d5bb-default-rtdb.firebaseio.com/userFavourites/$userId.json?auth=$authToken';
+      final favouriteResponse = await http.get(Uri.parse(url));
+      final favouriteData = json.decode(favouriteResponse.body);
+      print('favourite data');
+      print(favouriteResponse.body);
       final List<Product> loadedProducts = [];
       extratedData.forEach((prodId/*key*/, prodData/*value*/) {
         loadedProducts.add(
@@ -66,26 +81,27 @@ class Products with ChangeNotifier{
             imageUrl: prodData['imageUrl'],
             price: prodData['price'],
             description: prodData['description'],
-            isFavourite: prodData['isFavourite']
+            isFavourite: favouriteData == null ? false : favouriteData[prodId] ?? false,
           )
         );
       });
       _items = loadedProducts;
       notifyListeners();
     } catch (e){
+      print(e);
       throw e;
     }
   }
   Future<void> addProduct(Product product) async{
     print('add');
-    const url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products.json';
+    final url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products.json?auth=$authToken';
     try {
       final response = await http.post(Uri.parse(url), body: jsonEncode({
         'title': product.title,
         'description': product.description,
         'imageUrl': product.imageUrl,
         'price': product.price,
-        'isFavourite': product.isFavourite,
+        'creatorId': userId,
       }));
       final newProduct = Product(
         title: product.title,
@@ -106,7 +122,7 @@ class Products with ChangeNotifier{
   void updateProduct(String id, Product newProduct) async {
     final prodIndex = _items.indexWhere((prod) => prod.id == id);
     if(prodIndex >= 0){
-    final  url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products/$id.json';
+    final  url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products/$id.json?auth=$authToken';
     await http.patch(Uri.parse(url), body: json.encode({
       'title' : newProduct.title,
       'imageUrl' : newProduct.imageUrl,
@@ -120,7 +136,7 @@ class Products with ChangeNotifier{
     }
   }
   void deleteProduct(String id) async {
-    final  url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products/$id.json';
+    final  url = 'https://shop-8d5bb-default-rtdb.firebaseio.com/products/$id.json?auth=$authToken';
     final existingProductIndex = _items.indexWhere((prod) => prod.id == id);
     var existingProduct = _items[existingProductIndex];
     _items.removeAt(existingProductIndex);
